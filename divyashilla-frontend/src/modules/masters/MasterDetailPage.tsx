@@ -1,0 +1,13 @@
+import { FilePanel } from '../files/FilePanel';
+import { useState } from 'react';
+import { Link,useParams } from 'react-router-dom';
+import type { MasterRecord } from '../../api/types';
+import { useResource } from '../../api/useResource';
+import { PageHeader } from '../../components/PageHeader';
+import { ErrorState,Loading } from '../../components/States';
+import { displayDate,masterConfigs,text,type MasterKind } from './config';
+import { StatusDialog } from './StatusDialog';
+export function MasterDetailPage({kind}:{kind:MasterKind}) {
+  const {id}=useParams(),config=masterConfigs[kind],resource=useResource<{data:MasterRecord}>('/'+kind+'/'+id),[confirm,setConfirm]=useState(false),[notice,setNotice]=useState<string|null>(null),row=resource.data?.data;
+  return <><Link className="back-link" to={'/'+kind}>← Back to {config.title.toLowerCase()}</Link>{resource.loading?<Loading label="Loading record…"/>:resource.error?<ErrorState message={resource.error} retry={resource.reload}/>:row?<><PageHeader eyebrow={config.title.toUpperCase()} title={text(row[config.nameKey])} description="Contact and record details." action={<Link className="button primary" to={'/'+kind+'/'+id+'/edit'}>Edit {config.singular}</Link>}/>{notice&&<div className="alert success" role="status">{notice}</div>}<section className="panel detail-panel"><div className="section-heading"><h2>{config.singular.charAt(0).toUpperCase()+config.singular.slice(1)} details</h2><span className={'badge '+(row.is_active?'active':'inactive')}>{row.is_active?'Active':'Inactive'}</span></div><dl className="detail-grid">{config.fields.map(field=><div key={field.key} className={field.type==='textarea'?'wide':undefined}><dt>{field.label}</dt><dd>{text(row[field.key])||'Not provided'}</dd></div>)}<div><dt>Created</dt><dd>{displayDate(row.created_at)}</dd></div><div><dt>Last updated</dt><dd>{displayDate(row.updated_at)}</dd></div></dl><div className="detail-status"><p>{row.is_active?'Deactivate this record when it is no longer in regular use. Business history is retained.':'This record is inactive. You can restore it to your active list.'}</p><button className={'button '+(row.is_active?'secondary':'primary')} onClick={()=>setConfirm(true)}>{row.is_active?'Deactivate':'Reactivate'}</button></div></section>{kind==='designs'&&<FilePanel owner={{design_id:row.id}} title="Design images" primaryImageId={typeof row.image_file_id==='string'?row.image_file_id:null} onPrimaryChange={resource.reload}/>}{confirm&&<StatusDialog kind={kind} record={row} onClose={()=>setConfirm(false)} onSaved={()=>{setNotice(row.is_active?'Record deactivated.':'Record reactivated.');resource.reload();}}/>}</>:null}</>;
+}
