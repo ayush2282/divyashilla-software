@@ -1,0 +1,36 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            divyashilla-backend/package-lock.json
+            divyashilla-frontend/package-lock.json
+      - run: npm ci
+        working-directory: divyashilla-backend
+      - run: npm ci
+        working-directory: divyashilla-frontend
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+        working-directory: divyashilla-frontend
+      - run: npm run test:e2e
+        working-directory: divyashilla-frontend
+      - run: npm run release:build
+      - run: cd release/app && zip -qr ../divyashilla-app.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-service-release
+          path: release/divyashilla-app.zip
+          retention-days: 7
